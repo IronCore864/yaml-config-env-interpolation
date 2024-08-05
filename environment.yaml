@@ -1,0 +1,10 @@
+# environment:
+#   THINGDIR: /home/${USER}/thing
+#   CMD_DIR: /root/sleepy
+#   CMD_SOCKET: $CMD_DIR/.sock
+
+# Circular dependencies, unable to resolve further.
+environment:
+  A: $B
+  B: $C
+  C: $A
