@@ -10,7 +10,7 @@ import (
 )
 
 type EnvironmentDefinition struct {
-	Variables map[string]string `yaml:"environment"`
+	Environment map[string]string `yaml:"environment"`
 }
 
 func readYAMLFile(filePath string) (EnvironmentDefinition, error) {
@@ -72,24 +72,20 @@ func resolveVar(value string, envMap map[string]string) string {
 	})
 	return newValue
 }
-func renderEnvironment(envDef EnvironmentDefinition) map[string]string {
-	envMap := map[string]string{}
-
+func renderEnvironment(environment map[string]string) {
 	orderedKeys := []string{}
 	visited := map[string]bool{}
-	for key := range envDef.Variables {
+	for key := range environment {
 		path := []string{}
-		err := dfs(key, envDef.Variables, visited, path, &orderedKeys)
+		err := dfs(key, environment, visited, path, &orderedKeys)
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	for _, key := range orderedKeys {
-		envMap[key] = resolveVar(envDef.Variables[key], envMap)
+		environment[key] = resolveVar(environment[key], environment)
 	}
-
-	return envMap
 }
 
 func main() {
@@ -100,8 +96,8 @@ func main() {
 			return
 		}
 
-		renderedEnv := renderEnvironment(envDef)
-		for key, value := range renderedEnv {
+		renderEnvironment(envDef.Environment)
+		for key, value := range envDef.Environment {
 			fmt.Printf("%s=%s\n", key, value)
 		}
 		fmt.Println()
