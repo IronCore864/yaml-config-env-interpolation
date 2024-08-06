@@ -1,0 +1,4 @@
+environment:
+  A: ${USER}
+  B: ${A}
+  C: ${B}

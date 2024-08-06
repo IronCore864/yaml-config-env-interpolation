@@ -13,14 +13,12 @@ This Go program reads environment definitions from a YAML file, resolves environ
 
 ## Notes
 
-- Circular dependencies may result in an error message indicating the inability to resolve further.
+- Circular dependencies result in an error.
 - To include a literal `$` in the result value, escape it using `$$` in the input value. Maybe this feature should be removed because it's not usual to pass in a literal `$` as env var.
 
 ## Sample Usages
 
-### Standard Case
-
-Sample `environment.yaml`:
+File `environment1.yaml`:
 
 ```yaml
 environment:
@@ -36,21 +34,3 @@ CMD_DIR=/root/sleepy
 CMD_SOCKET=/root/sleepy/.sock
 THINGDIR=/home/tiexin/thing
 ```
-
-### Circular Dependencies
-
-Sample `environment.yaml`:
-
-```yaml
-environment:
-  A: $B
-  B: $C
-  C: $A
-```
-
-Expected Output: 
-
-```bash
-Circular dependency detected. Unable to resolve further.
-```
-

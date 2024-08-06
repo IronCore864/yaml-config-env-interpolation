@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -27,66 +28,82 @@ func readYAMLFile(filePath string) (EnvironmentDefinition, error) {
 	return env, nil
 }
 
+func getDependencies(key string, vars map[string]string) []string {
+	var res []string
+	value := vars[key]
+	for k := range vars {
+		if strings.Contains(value, fmt.Sprintf("${%s}", k)) || strings.Contains(value, fmt.Sprintf("$%s", k)) {
+			res = append(res, k)
+		}
+	}
+	return res
+}
+
+func dfs(key string, vars map[string]string, visited map[string]bool, path []string, ordered *[]string) error {
+	if visited[key] {
+		return nil
+	}
+
+	visited[key] = true
+	for _, dep := range getDependencies(key, vars) {
+		path = append(path, key)
+		if slices.Contains(path, dep) {
+			return fmt.Errorf("circle detected")
+		}
+		err := dfs(dep, vars, visited, path, ordered)
+		if err != nil {
+			return err
+		}
+	}
+
+	*ordered = append(*ordered, key)
+	return nil
+}
+
+func resolveVar(value string, envMap map[string]string) string {
+	// Replace $$ with a single $ to handle escaping;
+	// maybe we don't need this.
+	value = strings.ReplaceAll(value, "$$", "$")
+	newValue := os.Expand(value, func(key string) string {
+		if val, ok := envMap[key]; ok {
+			return val
+		}
+		return os.Getenv(key)
+	})
+	return newValue
+}
 func renderEnvironment(envDef EnvironmentDefinition) map[string]string {
 	envMap := map[string]string{}
-	unresolved := map[string]string{}
 
-	// Copy the environment variables to unresolved.
-	for key, value := range envDef.Variables {
-		unresolved[key] = value
+	orderedKeys := []string{}
+	visited := map[string]bool{}
+	for key := range envDef.Variables {
+		path := []string{}
+		err := dfs(key, envDef.Variables, visited, path, &orderedKeys)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	// Function to resolve a single variable value.
-	resolveVar := func(value string) string {
-		// Replace $$ with a single $ to handle escaping.
-		// Maybe we don't need this.
-		value = strings.ReplaceAll(value, "$$", "$")
-
-		newValue := os.Expand(value, func(key string) string {
-			if val, ok := envMap[key]; ok {
-				return val
-			}
-			return os.Getenv(key)
-		})
-		return newValue
-	}
-
-	for len(unresolved) > 0 {
-		// Track if any variables are resolved in this iteration.
-		resolvedInThisIteration := false
-
-		for key, value := range unresolved {
-			newValue := resolveVar(value)
-
-			// If no change was made, it means all dependencies are resolved.
-			if newValue == value {
-				envMap[key] = value
-				delete(unresolved, key)
-				resolvedInThisIteration = true
-			} else {
-				unresolved[key] = newValue
-			}
-		}
-
-		// If no variables were resolved in this iteration, it indicates a circular dependency.
-		if !resolvedInThisIteration {
-			fmt.Println("Circular dependency detected. Unable to resolve further.")
-			break
-		}
+	for _, key := range orderedKeys {
+		envMap[key] = resolveVar(envDef.Variables[key], envMap)
 	}
 
 	return envMap
 }
 
 func main() {
-	envDef, err := readYAMLFile("environment.yaml")
-	if err != nil {
-		fmt.Println("Error reading YAML file:", err)
-		return
-	}
+	for i := 1; i <= 3; i++ {
+		envDef, err := readYAMLFile(fmt.Sprintf("environment%d.yaml", i))
+		if err != nil {
+			fmt.Println("Error reading YAML file:", err)
+			return
+		}
 
-	renderedEnv := renderEnvironment(envDef)
-	for key, value := range renderedEnv {
-		fmt.Printf("%s=%s\n", key, value)
+		renderedEnv := renderEnvironment(envDef)
+		for key, value := range renderedEnv {
+			fmt.Printf("%s=%s\n", key, value)
+		}
+		fmt.Println()
 	}
 }

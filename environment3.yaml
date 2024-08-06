@@ -1,0 +1,5 @@
+# Circular dependencies
+environment:
+  A: $B
+  B: $C
+  C: $A

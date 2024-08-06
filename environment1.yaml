@@ -1,0 +1,4 @@
+environment:
+  THINGDIR: /home/${USER}/thing
+  CMD_DIR: /root/sleepy
+  CMD_SOCKET: $CMD_DIR/.sock
