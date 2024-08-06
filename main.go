@@ -72,6 +72,7 @@ func resolveVar(value string, envMap map[string]string) string {
 	})
 	return newValue
 }
+
 func renderEnvironment(environment map[string]string) {
 	orderedKeys := []string{}
 	visited := map[string]bool{}
